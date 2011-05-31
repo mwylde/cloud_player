@@ -1,14 +1,15 @@
 module CloudPlayer
   module Amazon
+    ENDPOINT = "https://www.amazon.com/cirrus/"
     class Library
       def initialize session
         @session = session
       end
 
       def load_tracks
+        tracks = []
         params = {
           "searchReturnType" => "TRACKS",
-          "maxResults" => 50,
           "searchCriteria.member.1.attributeName" => "keywords",
           "searchCriteria.member.1.comparisonType" => "LIKE",
           "searchCriteria.member.1.attributeValue" => "",
@@ -18,11 +19,17 @@ module CloudPlayer
           "searchCriteria.member.3.attributeName" => "status",
           "searchCriteria.member.3.comparisonType" => "EQUALS",
           "searchCriteria.member.3.attributeValue" => "AVAILABLE",
-          "albumArtUrlsRedirects" => false,
-          "distinctOnly" => false,
+          "albumArtUrlsRedirects" => "false",
+          "distinctOnly" => "false",
+          "countOnly" => "false",
+          "sortCriteriaList" => "",
+          "maxResults" => "50",
+          "caller" => "getServerSongs",
+          "Operation" => "searchLibrary",
           "selectedColumns.member.1" => "albumArtistName",
-          "selectedColumns.member.2" => "artistName",
-          "selectedColumns.member.3" => "assetType",
+          "selectedColumns.member.2" => "albumName",
+          "selectedColumns.member.3" => "artistName",
+          "selectedColumns.member.4" => "assetType",
           "selectedColumns.member.5" => "duration",
           "selectedColumns.member.6" => "objectId",
           "selectedColumns.member.7" => "sortAlbumArtistName",
@@ -32,11 +39,25 @@ module CloudPlayer
           "selectedColumns.member.11" => "status",
           "selectedColumns.member.12" => "trackStatus",
           "selectedColumns.member.13" => "extension",
-          "nextResultToken" => "",
-          "caller" => "getServerSongs",
-          "Operation" => "searchLibrary"
+          "sortCriteriaList.member.1.sortColumn" => "sortTitle",
+          "sortCriteriaList.member.1.sortType" => "ASC"
         }
-        request params
+
+        next_results_token = ""
+        while next_results_token
+          params["nextResultsToken"] = next_results_token
+          resp = request params
+          begin
+            results = resp["searchLibraryResponse"]["searchLibraryResult"]
+            next_results_token = results["nextResultsToken"]
+            tracks += results["searchReturnItemList"]
+            puts [results["resultCount"], next_results_token].inspect
+          rescue
+            puts resp.inspect
+            break
+          end
+        end
+        tracks
       end
 
       def update
@@ -56,11 +77,12 @@ module CloudPlayer
         }.merge params
         headers = {
           "ContentType" => "application/x-www-form-urlencoded",
-          "x-amzn-RequestId" => "b132417g-b10d-dmcp-82de-f0ed6b075dc9",
+          "x-amzn-RequestId" => UUIDTools::UUID.random_create,
           "x-adp-token" => @session.tid
         }
 
-        @session.agent.post("https://www.amazon.com/cirrus/", params, headers)
+        result = @session.agent.post(ENDPOINT, params, headers)
+        JSON.load(result.body)
       end
     end
   end
