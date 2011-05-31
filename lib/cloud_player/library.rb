@@ -2,10 +2,12 @@ module CloudPlayer
   module Amazon
     ENDPOINT = "https://www.amazon.com/cirrus/"
     class Track
-      props = [:albumArtistName, :albumName, :artistName,
+      @props = [:albumArtistName, :albumName, :artistName,
                :duration, :extension, :objectId, :title]
 
-      attr_reader *props
+      attr_reader *@props
+
+      def self.props; @props; end
 
       def initialize(hash)
         self.class.props.each{|p|
@@ -15,7 +17,7 @@ module CloudPlayer
     end
 
     class Album
-      props = [:albumArtistName, :albumCoverImageFull,
+      @props = [:albumArtistName, :albumCoverImageFull,
                :albumCoverImageLarge, :albumCoverImageMedium,
                :albumCoverImageSmall, :albumCoverImageTiny,
                :albumName, :artistName, :assetType, :bitrate,
@@ -27,7 +29,9 @@ module CloudPlayer
                :sortTitle, :status, :title, :trackNum, :type, :uploaded,
                :version]
 
-      attr_reader *props
+      attr_reader *@props
+
+      def self.props; @props; end
 
       def initialize(hash)
         self.class.props.each{|p|
@@ -35,9 +39,24 @@ module CloudPlayer
         }
       end      
     end
+
+    class Playlist
+      @props = [:adriveId, :playlistEntryList, :title,
+                :trackCount, :version]
+
+      attr_reader *@props
+
+      def self.props; @props; end
+
+      def initialize(hash)
+        self.class.props.each{|p|
+          instance_variable_set("@#{p}", hash[p.to_s]) rescue nil
+        }
+      end
+    end
     
     class Library
-      attr_reader :tracks
+      attr_reader :tracks, :albums, :playlists
       
       def initialize session
         @session = session
@@ -105,7 +124,32 @@ module CloudPlayer
         @albums = albums.collect{|a| Album.new(a["metadata"])}
       end
 
-      def load_items params
+      def load_playlists
+        params = {
+          "includeTrackMetadata" => "false",
+          "trackCountOnly" => "true",
+          "Operation" => "getPlaylists",
+          "caller" => "getServerListSongs",
+          "albumArtUrlsRedirects" => "false",
+          "playlistIdList" => "",
+          "trackColumns.member.1" => "albumArtistName",
+          "trackColumns.member.2" => "albumName",
+          "trackColumns.member.3" => "artistName",
+          "trackColumns.member.4" => "assetType",
+          "trackColumns.member.5" => "duration",
+          "trackColumns.member.6" => "objectId",
+          "trackColumns.member.7" => "sortAlbumArtistName",
+          "trackColumns.member.8" => "sortAlbumName",
+          "trackColumns.member.9" => "sortArtistName",
+          "trackColumns.member.10" => "title"
+        }
+
+        playlists = load_items params, "playlistInfoList"
+        @playlists = playlists.collect{|p| Playlist.new(p)}
+      end
+
+      
+      def load_items params, list = "searchReturnItemList"
         params["maxResults"] = "50"
         items = []
         next_results_token = ""
@@ -113,10 +157,11 @@ module CloudPlayer
           params["nextResultsToken"] = next_results_token
           resp = request params
           begin
-            results = resp["searchLibraryResponse"]["searchLibraryResult"]
+            results = resp["#{params["Operation"]}Response"]["#{params["Operation"]}Result"]
             next_results_token = results["nextResultsToken"]
-            items += results["searchReturnItemList"]
+            items += results[list]
             puts [results["resultCount"], next_results_token].inspect
+            break if next_results_token == ""
           rescue
             puts resp.inspect
             break
