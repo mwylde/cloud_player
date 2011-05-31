@@ -1,11 +1,9 @@
-require 'nokogiri'
-require 'mechanize'
-
 module CloudPlayer
   module Amazon
     # Processes auth information to produce an auth token which is
     # necessary for other portions of the API.
     class Session
+      attr_reader :agent, :customer_id, :did, :dtid, :tid
       # Creates a new Auth object for the given username and password.
       # @param String user The username for the account
       # @params String pass The password for the account
@@ -27,6 +25,11 @@ module CloudPlayer
           login_form.email = @user
           login_form.password = @pass
           page = @agent.submit(login_form)
+          body = page.send(:html_body)
+          @customer_id = body.match(/amznMusic\.customerId = '(.+)'/)[1]
+          @did = body.match(/amznMusic\.did = '(.+)'/)[1]
+          @dtid = body.match(/amznMusic\.dtid = '(.+)'/)[1]
+          @tid = body.match(/amznMusic\.tid = '(.+)'/)[1]
         else
           puts "no login form"
         end
