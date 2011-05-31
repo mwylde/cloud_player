@@ -1,13 +1,49 @@
 module CloudPlayer
   module Amazon
     ENDPOINT = "https://www.amazon.com/cirrus/"
+    class Track
+      props = [:albumArtistName, :albumName, :artistName,
+               :duration, :extension, :objectId, :title]
+
+      attr_reader *props
+
+      def initialize(hash)
+        self.class.props.each{|p|
+          instance_variable_set("@#{p}", hash[p.to_s]) rescue nil
+        }
+      end
+    end
+
+    class Album
+      props = [:albumArtistName, :albumCoverImageFull,
+               :albumCoverImageLarge, :albumCoverImageMedium,
+               :albumCoverImageSmall, :albumCoverImageTiny,
+               :albumName, :artistName, :assetType, :bitrate,
+               :creationDate, :distinctCount, :duration, :extension,
+               :hidden, :keywords, :lastUpdatedDate, :localFilePath,
+               :md5, :mimeType, :name, :objectId, :parentObjectId,
+               :payerId, :primaryGenre, :purchased, :size,
+               :sortAlbumArtistName, :sortAlbumName, :sortArtistName,
+               :sortTitle, :status, :title, :trackNum, :type, :uploaded,
+               :version]
+
+      attr_reader *props
+
+      def initialize(hash)
+        self.class.props.each{|p|
+          instance_variable_set("@#{p}", hash[p.to_s]) rescue nil
+        }
+      end      
+    end
+    
     class Library
+      attr_reader :tracks
+      
       def initialize session
         @session = session
       end
 
       def load_tracks
-        tracks = []
         params = {
           "searchReturnType" => "TRACKS",
           "searchCriteria.member.1.attributeName" => "keywords",
@@ -23,7 +59,6 @@ module CloudPlayer
           "distinctOnly" => "false",
           "countOnly" => "false",
           "sortCriteriaList" => "",
-          "maxResults" => "50",
           "caller" => "getServerSongs",
           "Operation" => "searchLibrary",
           "selectedColumns.member.1" => "albumArtistName",
@@ -43,6 +78,36 @@ module CloudPlayer
           "sortCriteriaList.member.1.sortType" => "ASC"
         }
 
+        tracks = load_items params
+        @tracks = tracks.collect{|t| Track.new(t["metadata"])}
+      end
+
+      def load_albums
+        params = {
+          "searchReturnType" => "ALBUMS",
+          "searchCriteria.member.1.attributeName" => "status",
+          "searchCriteria.member.1.comparisonType" => "EQUALS",
+          "searchCriteria.member.1.attributeValue" => "AVAILABLE",
+          "searchCriteria.member.2.attributeName" => "trackStatus",
+          "searchCriteria.member.2.comparisonType" => "IS_NULL",
+          "searchCriteria.member.2.attributeValue" => "",
+          "sortCriteriaList" => "",
+          "albumArtUrlsRedirects" => "false",
+          "countOnly" => "false",
+          "Operation" => "searchLibrary",
+          "caller" => "getAllServerData",
+          "albumArtUrlsSizeList.member.1" => "MEDIUM",
+          "sortCriteriaList.member.1.sortColumn" => "sortAlbumName",
+          "sortCriteriaList.member.1.sortType" => "ASC"
+        }
+
+        albums = load_items params
+        @albums = albums.collect{|a| Album.new(a["metadata"])}
+      end
+
+      def load_items params
+        params["maxResults"] = "50"
+        items = []
         next_results_token = ""
         while next_results_token
           params["nextResultsToken"] = next_results_token
@@ -50,14 +115,14 @@ module CloudPlayer
           begin
             results = resp["searchLibraryResponse"]["searchLibraryResult"]
             next_results_token = results["nextResultsToken"]
-            tracks += results["searchReturnItemList"]
+            items += results["searchReturnItemList"]
             puts [results["resultCount"], next_results_token].inspect
           rescue
             puts resp.inspect
             break
           end
         end
-        tracks
+        items
       end
 
       def update
