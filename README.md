@@ -27,5 +27,5 @@ library.load_playlists
 
 # Now we can use the information
 library.albums[12].albumName # => "Antifogmatic"
-library.tracks[40].objectId # => "8d4d7f39-fea2-4179-b08d-e76ce66f4582"
+library.tracks[40].streaming_url session # => "https://zcd-00.s3.amazonaws.com/A3R5I5..."
 ```

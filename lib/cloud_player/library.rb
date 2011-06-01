@@ -14,6 +14,25 @@ module CloudPlayer
           instance_variable_set("@#{p}", hash[p.to_s]) rescue nil
         }
       end
+
+      def streaming_url session
+        if @streaming_url
+          @streaming_url
+        else
+          params = {
+            "trackIdList.member.1" => @objectId,
+            "Operation" => "getStreamUrls",
+            "https" => "true",
+            "caller" => "player.playSong"
+          }
+          resp = session.request params
+          begin
+            @streaming_url = resp["getStreamUrlsResponse"]["getStreamUrlsResult"]["trackStreamUrlList"][0]["url"]
+          rescue NoMethodError
+            raise Exception.new("Unable to get streaming URL")
+          end
+        end
+      end
     end
 
     class Album
@@ -155,15 +174,15 @@ module CloudPlayer
         next_results_token = ""
         while next_results_token
           params["nextResultsToken"] = next_results_token
-          resp = request params
+          resp = @session.request params
           begin
             results = resp["#{params["Operation"]}Response"]["#{params["Operation"]}Result"]
             next_results_token = results["nextResultsToken"]
             items += results[list]
-            puts [results["resultCount"], next_results_token].inspect
+            # puts [results["resultCount"], next_results_token].inspect
             break if next_results_token == ""
           rescue
-            puts resp.inspect
+            # puts resp.inspect
             break
           end
         end
@@ -175,24 +194,7 @@ module CloudPlayer
           "caller" => "checkServerChange",
           "Operation" => "getGlobalLastUpdatedDate"
         }
-        request params
-      end
-
-      def request params
-        params = {
-          "ContentType" => "JSON",
-          "customerInfo.customerId" =>  @session.customer_id,
-          "customerInfo.deviceId" => @session.did,
-          "customerInfo.deviceType" => @session.dtid
-        }.merge params
-        headers = {
-          "ContentType" => "application/x-www-form-urlencoded",
-          "x-amzn-RequestId" => UUIDTools::UUID.random_create,
-          "x-adp-token" => @session.tid
-        }
-
-        result = @session.agent.post(ENDPOINT, params, headers)
-        JSON.load(result.body)
+        @session.request params
       end
     end
   end
