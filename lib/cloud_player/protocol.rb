@@ -1,10 +1,9 @@
-require 'rubybits'
 module CloudPlayer
   # Helper that eases use of the wire protocol
-  class Client
-    # Searches for the specified string
-    def search string
-      
+  class Client < Connection
+    def initialize
+      @buffer = ""
+      @requests = {}
     end
 
     # These methods all map to commands that take no data
@@ -42,17 +41,26 @@ module CloudPlayer
                        :cmd => Protocol.const_get("#{cc.upcase}_CMD"),
                        :len => data.size,
                        :data => data)
-      send_string p, block
+      send_protocol p, block
     end
 
-    def send_string p, block
-      id = p.id
-      @requests[id] = block
+    def send_protocol p, block
+      @requests[p.id] = block
       send_data p.to_s
     end
 
     def new_id
-      rand(2**16)
+      65536.times{|x| return x unless @requests[x]}
+      raise "Too many requests outstanding"
+    end
+
+    def receive_data data
+      @buffer << data
+      resps, @buffer = Protocol.parse(@buffer)
+      resps.each{|resp|
+        @requests[resp.id].call(resp.data)
+        @requests.delete(resp.id)
+      }
     end
   end
   

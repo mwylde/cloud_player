@@ -5,6 +5,8 @@ require 'nokogiri'
 require 'mechanize'
 require 'uuidtools'
 require 'thor'
+require 'rubybits'
+require 'eventmachine'
 
 require "#{ROOT}/cloud_player/runner"
 require "#{ROOT}/cloud_player/auth"
