@@ -4,6 +4,12 @@ require 'json'
 require 'nokogiri'
 require 'mechanize'
 require 'uuidtools'
+require 'thor'
 
+require "#{ROOT}/cloud_player/runner"
 require "#{ROOT}/cloud_player/auth"
 require "#{ROOT}/cloud_player/library"
+
+module CloudPlayer
+  VERSION = "0.0.1"
+end

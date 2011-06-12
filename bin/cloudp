@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+
+root = File.expand_path(File.dirname(__FILE__))
+
+require "#{root}/../lib/cloud_player"
+
+CloudPlayer::Runner.start
