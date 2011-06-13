@@ -3,7 +3,7 @@ module CloudPlayer
     ENDPOINT = "https://www.amazon.com/cirrus/"
     class Track
       @props = [:albumArtistName, :albumName, :artistName,
-               :duration, :extension, :objectId, :title]
+                :duration, :extension, :objectId, :title, :trackNum]
 
       attr_reader *@props
 
@@ -52,15 +52,18 @@ module CloudPlayer
 
       def self.props; @props; end
 
+      def tracks
+      end
+
       def initialize(hash)
         self.class.props.each{|p|
           instance_variable_set("@#{p}", hash[p.to_s]) rescue nil
         }
-      end      
+      end
     end
 
     class Playlist
-      @props = [:adriveId, :playlistEntryList, :title,
+      @props = [:objectId, :adriveId, :playlistEntryList, :title,
                 :trackCount, :version]
 
       attr_reader *@props
@@ -79,6 +82,18 @@ module CloudPlayer
       
       def initialize session
         @session = session
+        # All library items indexed by id
+        @items_by_id = {}
+        # Tracks index by a pair [album, artist]
+        @tracks_by_album_artist = {}
+      end
+
+      def find id
+        @items_by_id[id]
+      end
+
+      def tracks_for_album album
+        @tracks_by_album_artist[[album.albumName, album.albumArtistName]]
       end
 
       def load_tracks
@@ -112,12 +127,20 @@ module CloudPlayer
           "selectedColumns.member.11" => "status",
           "selectedColumns.member.12" => "trackStatus",
           "selectedColumns.member.13" => "extension",
+          "selectedColumns.member.14" => "trackNum",
           "sortCriteriaList.member.1.sortColumn" => "sortTitle",
           "sortCriteriaList.member.1.sortType" => "ASC"
         }
 
         tracks = load_items params
         @tracks = tracks.collect{|t| Track.new(t["metadata"])}
+        @tracks_by_album_artist = {}
+        @tracks.each{|t|
+          @items_by_id[t.objectId] = t
+          aaa = [t.albumName, t.albumArtistName]
+          @tracks_by_album_artist[aaa] ||= []
+          @tracks_by_album_artist[aaa] << t
+        }
       end
 
       def load_albums
@@ -141,6 +164,7 @@ module CloudPlayer
 
         albums = load_items params
         @albums = albums.collect{|a| Album.new(a["metadata"])}
+        @albums.each{|a| @items_by_id[a.objectId] = a}
       end
 
       def load_playlists
@@ -165,11 +189,31 @@ module CloudPlayer
 
         playlists = load_items params, "playlistInfoList"
         @playlists = playlists.collect{|p| Playlist.new(p)}
+        @playlists.each{|p| @items_by_id[p.objectId] = p}
       end
 
+      def load_everything
+        load_playlists
+        load_tracks
+        load_albums
+      end
+
+      def get_count params
+        params = params.dup
+        params["countOnly"] = "true"
+        params.delete_if{|k,v| k.match("selectedColumns")}
+        params["selectedColumns.member.1"] = "*"
+        resp = @session.request params
+        resp["#{params["Operation"]}Response"]["#{params["Operation"]}Result"]["resultCount"]
+      end
       
       def load_items params, list = "searchReturnItemList"
-        params["maxResults"] = "50"
+        params["maxResults"] = "500"
+
+        # first get count so we make sure we get the right number of
+        # results, as Amazon seems to sometimes screw this up
+        count = get_count params
+        
         items = []
         next_results_token = ""
         while next_results_token
@@ -179,7 +223,12 @@ module CloudPlayer
             results = resp["#{params["Operation"]}Response"]["#{params["Operation"]}Result"]
             next_results_token = results["nextResultsToken"]
             items += results[list]
-            # puts [results["resultCount"], next_results_token].inspect
+            # puts [results["resultCount"],
+            # next_results_token].inspect
+            # puts "Got #{items.size}, next #{next_results_token}"
+            if next_results_token == "" && count
+              next_results_token = (items.size + params["maxResults"]).to_s
+            end
             break if next_results_token == ""
           rescue
             # puts resp.inspect

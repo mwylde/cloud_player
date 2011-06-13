@@ -16,7 +16,7 @@ module CloudPlayer
 
     # These methods all take one parameter which is converted directly
     # to data in the remote request
-    [:play_trk, :queue_add, :queue_del, :alb_detail,
+    [:play_item, :queue_add, :queue_del, :alb_detail,
      :trk_detail, :plst_detail, :search].each{|cc|
       define_method cc do |param, &block|
         do_command cc, param, &block
@@ -68,20 +68,20 @@ module CloudPlayer
   class Protocol < RubyBits::Structure
     PLAY_CMD       = 0
     PAUSE_CMD      = 1
-    PREV_CMD       = 14
-    NEXT_CMD       = 15
-    PLAY_TRK_CMD   = 2
-    QUEUE_LIST_CMD = 3
-    QUEUE_ADD_CMD  = 4
-    QUEUE_DEL_CMD  = 5
-    QUEUE_CLR_CMD  = 6
-    ALB_LIST_CMD   = 7
-    TRK_LIST_CMD   = 8
-    PLST_LIST_CMD  = 9
-    ALB_DETAIL_CMD = 10
-    TRK_DETAIL_CMD = 11
-    PLST_DETAIL_CMD= 12
-    SEARCH_CMD     = 13
+    PREV_CMD       = 2
+    NEXT_CMD       = 3
+    PLAY_ITEM_CMD  = 4
+    QUEUE_LIST_CMD = 5
+    QUEUE_ADD_CMD  = 6
+    QUEUE_DEL_CMD  = 7
+    QUEUE_CLR_CMD  = 8
+    ALB_LIST_CMD   = 9
+    TRK_LIST_CMD   = 10
+    PLST_LIST_CMD  = 11
+    ALB_DETAIL_CMD = 12
+    TRK_DETAIL_CMD = 13
+    PLST_DETAIL_CMD= 14
+    SEARCH_CMD     = 15
 
     unsigned :id,     16,  "ID number for request, which is resent with results"
     unsigned :cmd,    8,   "Command ID, specified as constants in structure.rb"

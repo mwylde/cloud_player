@@ -1,4 +1,6 @@
 module CloudPlayer
+  class AuthenticationError < RuntimeError; end
+  
   module Amazon
     # Processes auth information to produce an auth token which is
     # necessary for other portions of the API.
@@ -37,7 +39,7 @@ module CloudPlayer
               retried = true
               retry
             else
-              raise Exception.new("Unable to authenticate")
+              raise AuthenticationError, "Failed to authenticate with Amazon"
             end
           end
         else
