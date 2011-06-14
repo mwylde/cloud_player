@@ -97,7 +97,7 @@ module CloudPlayer
       def add_item a
         @items_by_id[a.objectId] = a
         # so we can search without worrying about diacritics
-        canonical = UnicodeUtils.canonical_decomposition(a).gsub(/[^\x00-\x7F]/n, "")
+        canonical = UnicodeUtils.canonical_decomposition(a.title).gsub(/[^\x00-\x7F]/n, "")
         @search_keys << canonical
         @search_values << a.objectId
       end
@@ -226,7 +226,7 @@ module CloudPlayer
 
         # first get count so we make sure we get the right number of
         # results, as Amazon seems to sometimes screw this up
-        count = get_count params
+        count = get_count params rescue nil
         
         items = []
         next_results_token = ""
