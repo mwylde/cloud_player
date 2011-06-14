@@ -28,22 +28,74 @@ module CloudPlayer
     def prev
     end
 
-    def next
+    def _next_
     end
 
-    def play_item(id)
-      item = @library.find(id)
+    def play_item id
+      @queue += tracks_for_id(id)
+      _next_
+    end
+
+    def queue_list
+      @queue.collect{|item| item.id}.join(",")
+    end
+
+    def queue_add id
+      @queue = tracks_for_id(id) + @queue
+      true
+    end
+
+    def queue_delete id
+      raise "Not implemented"
+    end
+
+    def queue_clear
+      @queue.clear
+    end
+
+    def album_list
+      raise "Not implemented"
+    end
+
+    def playlist_list
+      raise "Not implemented"
+    end
+
+    def album_detail id
+      raise "Not implemented"
+    end
+
+    def track_detail id
+      raise "Not implemented"
+    end
+
+    def playlist_detail id
+      raise "Not implemented"
+    end
+
+    def search s
+      @library.search(s).join(",")
+    end
+    
+    def tracks_for_item item
       case item
       when Amazon::Track
-        @queue << item
+        [item]
       when Amazon::Album
         tracks = album.tracks_for_album(@library.find(id))
         # we reverse because @queue is a...queue and tracks are popped
         # from the back, and we want track 1 to be popped first
-        @queue += tracks.sort_by{|t| t.track_num.to_i}.reverse
+        tracks.sort_by{|t| t.track_num ? t.track_num.to_i : 0}.reverse
       when Amazon::Playlist
+        raise "Not implemented"
+      else
+        raise "Unhandled item"
+      end      
     end
 
+    def tracks_for_id id
+      tracks_for_item(@library.find(id))
+    end
   end
 
   
@@ -72,7 +124,7 @@ module CloudPlayer
       when PREV_CMD
         respond p, @server.prev
       when NEXT_CMD
-        respond p, @server.next
+        respond p, @server._next_
       when PLAY_ITEM_CMD
         respond p, @server.play_item(p.data)
       when QUEUE_LIST_CMD

@@ -7,6 +7,8 @@ require 'uuidtools'
 require 'thor'
 require 'rubybits'
 require 'eventmachine'
+require 'unicode_utils/compatibility_decomposition'
+require 'amatch'
 
 require "#{ROOT}/cloud_player/runner"
 require "#{ROOT}/cloud_player/auth"

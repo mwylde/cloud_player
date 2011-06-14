@@ -86,6 +86,20 @@ module CloudPlayer
         @items_by_id = {}
         # Tracks index by a pair [album, artist]
         @tracks_by_album_artist = {}
+        # contains the normalized strings of every item
+        @search_keys = []
+        # contains the corresponding ids for each element in
+        # @search_keys. we have to keep them seperate so we can
+        # efficiently search.
+        @search_values = []
+      end
+
+      def add_item a
+        @items_by_id[a.objectId] = a
+        # so we can search without worrying about diacritics
+        canonical = UnicodeUtils.canonical_decomposition(a).gsub(/[^\x00-\x7F]/n, "")
+        @search_keys << canonical
+        @search_values << a.objectId
       end
 
       def find id
@@ -136,7 +150,7 @@ module CloudPlayer
         @tracks = tracks.collect{|t| Track.new(t["metadata"])}
         @tracks_by_album_artist = {}
         @tracks.each{|t|
-          @items_by_id[t.objectId] = t
+          add_item t
           aaa = [t.albumName, t.albumArtistName]
           @tracks_by_album_artist[aaa] ||= []
           @tracks_by_album_artist[aaa] << t
@@ -164,7 +178,7 @@ module CloudPlayer
 
         albums = load_items params
         @albums = albums.collect{|a| Album.new(a["metadata"])}
-        @albums.each{|a| @items_by_id[a.objectId] = a}
+        @albums.each{|a| add_item a}
       end
 
       def load_playlists
@@ -189,7 +203,7 @@ module CloudPlayer
 
         playlists = load_items params, "playlistInfoList"
         @playlists = playlists.collect{|p| Playlist.new(p)}
-        @playlists.each{|p| @items_by_id[p.objectId] = p}
+        @playlists.each{|p| add_item p}
       end
 
       def load_everything
@@ -244,6 +258,11 @@ module CloudPlayer
           "Operation" => "getGlobalLastUpdatedDate"
         }
         @session.request params
+      end
+
+      def search s, num = 10
+        results = s.jarowinkler_similar(@search_keys)
+        results.zip(@search_values).sort_by{|x| -x[0]}[0..num-1].collect{|x| x[1]}
       end
     end
   end
