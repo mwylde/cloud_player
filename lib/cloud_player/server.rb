@@ -1,7 +1,14 @@
 module CloudPlayer
   class Server
     def initialize options
+      trap "INT" do
+        puts "Received signal, dying..."
+        exit!
+      end
+
       @options = options
+      @options[:user] ||= "wyldeone@gmail.com"
+      @options[:password] ||= "helloasdf1"
       @session = Amazon::Session.new(@options[:user], @options[:password])
       begin
         @session.login
@@ -11,12 +18,18 @@ module CloudPlayer
         exit
       end
       @library = Amazon::Library.new(@session)
-      @library.load_everything
+      #TODO: Load other stuff
+      @library.load_albums
+      puts "Loaded stuff"
       @queue = []
     end
 
     def run
-      
+      ServerConnection.instance_variable_set(:@server, self)
+      EM.run {
+        puts "Started server on #{@options[:port]}"
+        EM.start_server "127.0.0.1", @options[:port], ServerConnection
+      }
     end
 
     def play
@@ -61,22 +74,14 @@ module CloudPlayer
       raise "Not implemented"
     end
 
-    def album_detail id
-      raise "Not implemented"
-    end
-
-    def track_detail id
-      raise "Not implemented"
-    end
-
-    def playlist_detail id
-      raise "Not implemented"
+    def item_detail id
+      Library.find(id).serialize
     end
 
     def search s
       @library.search(s).join(",")
     end
-    
+
     def tracks_for_item item
       case item
       when Amazon::Track
@@ -90,7 +95,7 @@ module CloudPlayer
         raise "Not implemented"
       else
         raise "Unhandled item"
-      end      
+      end
     end
 
     def tracks_for_id id
@@ -98,56 +103,66 @@ module CloudPlayer
     end
   end
 
-  
+
   # EventMachine Connection subclass which handles the actual business
   # of talking to clients.
-  class ServerConnection < Connection
-    def initialize server
+  class ServerConnection < EM::Connection
+    def initialize
       @buffer = ""
-      @server = server
+      @server = self.class.instance_variable_get(:@server)
     end
-    
+
     def receive_data data
+      # puts "Got data: #{data.bytes.to_a.collect{|x| x.to_s(16)}.join(" ")}"
       @buffer << data
-      resps, @buffer = Protocol.parser(@buffer)
+      resps, @buffer = Protocol.parse(@buffer)
       resps.each{|resp|
         handle resp
       }
     end
 
+    def respond p, data
+      resp = Protocol.new(:id => p.id,
+                          :cmd => p.cmd,
+                          :len => data.size,
+                          :data => data).to_s
+      send_data resp
+    end
+
     def handle p
+      puts "Handling: #{p.data}"
       case p.cmd
-      when PLAY_CMD
+      when Protocol::PLAY_CMD
         respond p, @server.play
-      when PAUSE_CMD
+      when Protocol::PAUSE_CMD
         respond p, @server.pause
-      when PREV_CMD
+      when Protocol::PREV_CMD
         respond p, @server.prev
-      when NEXT_CMD
+      when Protocol::NEXT_CMD
         respond p, @server._next_
-      when PLAY_ITEM_CMD
+      when Protocol::PLAY_ITEM_CMD
         respond p, @server.play_item(p.data)
-      when QUEUE_LIST_CMD
+      when Protocol::QUEUE_LIST_CMD
         respond p, @server.queue_list
-      when QUEUE_ADD_CMD
+      when Protocol::QUEUE_ADD_CMD
         respond p, @server.queue_add(p.data)
-      when QUEUE_DEL_CMD
+      when Protocol::QUEUE_DEL_CMD
         respond p, @server.queue_delete(p.data)
-      when QUEUE_CLR_CMD
+      when Protocol::QUEUE_CLR_CMD
         respond p, @server.queue_clear
-      when ALB_LIST_CMD
+      when Protocol::ALB_LIST_CMD
         respond p, @server.album_list
-      when TRK_LIST_CMD
+      when Protocol::TRK_LIST_CMD
         respond p, @server.track_list
-      when PLST_LIST_CMD
+      when Protocol::PLST_LIST_CMD
         respond p, @server.playlist_list
-      when ALB_DETAIL_CMD
+      when Protocol::ALB_DETAIL_CMD
         respond p, @server.album_detail(p.data)
-      when TRK_DETAIL_CMD
+      when Protocol::TRK_DETAIL_CMD
         respond p, @server.track_detail(p.data)
-      when PLST_DETAIL_CMD
+      when Protocol::PLST_DETAIL_CMD
         respond p, @server.playlist_detail(p.data)
-      when SEARCH_CMD
+      when Protocol::SEARCH_CMD
         respond p, @server.search(p.data)
       else
         error p, "Unknown command #{p.cmd}"

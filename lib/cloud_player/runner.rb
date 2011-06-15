@@ -9,8 +9,9 @@ module CloudPlayer
       music and managing a playlist.
     D
     method_option :daemonize, :default => false,  :desc => "Causes the server to fork into the background.", :aliases => "-d"
+    method_option :port, :default => PORT, :desc => "The server will bind to the specified port.", :aliases => "-p"
     def server
-      Server.new(:daemonize => !!options.daemonize).run
+      Server.new(:daemonize => !!options.daemonize, :port => options.port).run
     end
 
     ######## SEARCH ##########
@@ -20,8 +21,16 @@ module CloudPlayer
       searches its library for the string provided.
     D
     method_option :in, :default => "all", :type => :string, :desc => "Restricts search to a particular object, which can be album, song, playlist or all", :aliases => "-i"
+    method_option :port, :default => PORT, :desc => "The port that the server's running on.", :aliases => "-p"
     def search string
-      puts "Doing search on #{string} in @{options.in}"
+      EM.run do
+        client = Client.connect(:port => options.port)
+        client.search(string){|resp|
+          resp.split(",").each_with_index{|x, i|
+            puts "#{i}. #{x}"
+          }
+        }
+      end
     end
 
     ######## VERSION ##########

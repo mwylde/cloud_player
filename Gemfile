@@ -10,6 +10,7 @@ gem "rubybits", ">= 0.2.0"
 gem "eventmachine", ">= 0.12.10"
 gem "unicode_utils", ">= 1.0.0"
 gem "amatch", ">= 0.2.5"
+gem "rainbow", ">= 1.1.1"
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.

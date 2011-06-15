@@ -20,7 +20,6 @@ module CloudPlayer
 
       # Produces an auth token for the account
       def login
-        puts @agent.cookies[1]
         page = @agent.get("https://www.amazon.com/cloudplayer")
         login_form = page.form("signIn")
         if login_form

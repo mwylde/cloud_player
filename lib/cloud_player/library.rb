@@ -1,7 +1,23 @@
 module CloudPlayer
   module Amazon
     ENDPOINT = "https://www.amazon.com/cirrus/"
-    class Track
+    class LibraryObject
+      @props = []
+      
+      def props
+        self.class.instance_variable_get(:@props)
+      end
+      
+      def serialize
+        hash = {:class => self.class.to_s, :data => {}}
+        props.collect{|k|
+          hash[:data][k] = instance_variable_get("@#{k}")
+        }
+        JSON.dump(hash)
+      end
+    end
+    
+    class Track < LibraryObject
       @props = [:albumArtistName, :albumName, :artistName,
                 :duration, :extension, :objectId, :title, :trackNum]
 
@@ -35,7 +51,7 @@ module CloudPlayer
       end
     end
 
-    class Album
+    class Album < LibraryObject
       @props = [:albumArtistName, :albumCoverImageFull,
                :albumCoverImageLarge, :albumCoverImageMedium,
                :albumCoverImageSmall, :albumCoverImageTiny,
@@ -62,7 +78,7 @@ module CloudPlayer
       end
     end
 
-    class Playlist
+    class Playlist < LibraryObject
       @props = [:objectId, :adriveId, :playlistEntryList, :title,
                 :trackCount, :version]
 
@@ -79,6 +95,16 @@ module CloudPlayer
     
     class Library
       attr_reader :tracks, :albums, :playlists
+
+      def self.unserialize_obj json
+        hash = JSON.load(json)
+        begin
+          klass = Amazon.const_get(hash["class"])
+          klass.new(hash["data"])
+        rescue
+          #TODO: error out somehow
+        end
+      end
       
       def initialize session
         @session = session
@@ -97,7 +123,7 @@ module CloudPlayer
       def add_item a
         @items_by_id[a.objectId] = a
         # so we can search without worrying about diacritics
-        canonical = UnicodeUtils.canonical_decomposition(a.title).gsub(/[^\x00-\x7F]/n, "")
+        canonical = UnicodeUtils.canonical_decomposition(a.title).gsub(/[^\x00-\x7F]/, "")
         @search_keys << canonical
         @search_values << a.objectId
       end
