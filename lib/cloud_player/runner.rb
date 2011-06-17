@@ -25,10 +25,14 @@ module CloudPlayer
     def search string
       EM.run do
         client = Client.connect(:port => options.port)
-        client.search(string){|resp|
-          resp.split(",").each_with_index{|x, i|
-            puts "#{i}. #{x}"
+        client.search(string){|json|
+          data = JSON.load(json)
+          data.each_with_index{|id, i|
+            item = Amazon::Library.unserialize_obj(id)
+            puts "#{i}. #{item.albumName} - #{item.title}" if item
           }
+          client.close_connection
+          EM.stop
         }
       end
     end

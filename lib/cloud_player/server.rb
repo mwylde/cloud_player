@@ -75,11 +75,12 @@ module CloudPlayer
     end
 
     def item_detail id
-      Library.find(id).serialize
+      @library.find(id).serialize rescue nil
     end
 
     def search s
-      @library.search(s).join(",")
+      puts "Doing search"
+      JSON.dump @library.search(s).collect{|id| item_detail id}.reject{|x| !x}
     end
 
     def tracks_for_item item
@@ -156,12 +157,8 @@ module CloudPlayer
         respond p, @server.track_list
       when Protocol::PLST_LIST_CMD
         respond p, @server.playlist_list
-      when Protocol::ALB_DETAIL_CMD
-        respond p, @server.album_detail(p.data)
-      when Protocol::TRK_DETAIL_CMD
-        respond p, @server.track_detail(p.data)
-      when Protocol::PLST_DETAIL_CMD
-        respond p, @server.playlist_detail(p.data)
+      when Protocol::ITEM_DETAIL_CMD
+        respond p, @server.item_detail(p.data)
       when Protocol::SEARCH_CMD
         respond p, @server.search(p.data)
       else

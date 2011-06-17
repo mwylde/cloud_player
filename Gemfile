@@ -11,6 +11,9 @@ gem "eventmachine", ">= 0.12.10"
 gem "unicode_utils", ">= 1.0.0"
 gem "amatch", ">= 0.2.5"
 gem "rainbow", ">= 1.1.1"
+gem "uuidtools", ">= 2.1.2"
+gem "therubyracer", ">= 0.9.0"
+gem "coffee-script", ">= 2.2.0"
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.

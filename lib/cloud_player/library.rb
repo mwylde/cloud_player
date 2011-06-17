@@ -13,7 +13,7 @@ module CloudPlayer
         props.collect{|k|
           hash[:data][k] = instance_variable_get("@#{k}")
         }
-        JSON.dump(hash)
+        hash
       end
     end
     
@@ -96,12 +96,12 @@ module CloudPlayer
     class Library
       attr_reader :tracks, :albums, :playlists
 
-      def self.unserialize_obj json
-        hash = JSON.load(json)
+      def self.unserialize_obj hash
         begin
-          klass = Amazon.const_get(hash["class"])
+          klass = Amazon.const_get(hash["class"].split("::")[-1])
           klass.new(hash["data"])
         rescue
+          puts "Error on library.rb:#{__LINE__}: #{$!}"
           #TODO: error out somehow
         end
       end

@@ -18,7 +18,7 @@ module CloudPlayer
 
     unsigned :id,     16,  "ID number for request, which is resent with results"
     unsigned :cmd,    8,   "Command ID, specified as constants in structure.rb"
-    unsigned :len,    16,  "Length of data in bytes"
+    unsigned :len,    32,  "Length of data in bytes"
     variable :data,        "Data", :length => :len, :unit => :byte
     unsigned :checksum,8,  "Checksum byte = (sum of the previous bytes) & 255"
 
