@@ -26,7 +26,9 @@ module CloudPlayer
       EM.run do
         client = Client.connect(:port => options.port)
         client.search(string){|json|
+          puts json
           data = JSON.load(json)
+          puts data.inspect
           data.each_with_index{|id, i|
             item = Amazon::Library.unserialize_obj(id)
             puts "#{i}. #{item.albumName} - #{item.title}" if item

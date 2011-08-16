@@ -19,7 +19,7 @@ module CloudPlayer
       end
       @library = Amazon::Library.new(@session)
       #TODO: Load other stuff
-      @library.load_albums
+      @library.load_everything
       puts "Loaded stuff"
       @queue = []
     end
@@ -80,7 +80,7 @@ module CloudPlayer
 
     def search s
       puts "Doing search"
-      JSON.dump @library.search(s).collect{|id| item_detail id}.reject{|x| !x}
+      JSON.dump @library.search(s).collect{|id| puts id; item_detail id}.reject{|x| !x}
     end
 
     def tracks_for_item item
@@ -123,6 +123,7 @@ module CloudPlayer
     end
 
     def respond p, data
+      puts data.inspect
       resp = Protocol.new(:id => p.id,
                           :cmd => p.cmd,
                           :len => data.size,
